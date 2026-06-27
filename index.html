@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c111b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="危機管理">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%230c111b'/%3E%3Cpath d='M90 36v108M36 90h108' stroke='%232dd4bf' stroke-width='20' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>麻酔危機管理エイド｜離島麻酔ツールキット</title>
+<style>
+  :root{
+    --ink:#0c111b; --surface:#141b29; --elev:#1c2536; --line:#2a3550;
+    --txt:#e9eef7; --muted:#93a1b8; --dim:#6c7b95;
+    --teal:#2dd4bf; --amber:#f5a524; --rose:#fb7185; --violet:#a78bfa; --red:#ef4444; --green:#34d399; --sky:#38bdf8; --orange:#fb923c; --pink:#f472b6;
+    --warn-bg:#3a1d1d; --warn-line:#7f3030;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --ui:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--ink);color:var(--txt);font-family:var(--ui);-webkit-text-size-adjust:100%}
+  body{line-height:1.5;padding-bottom:48px}
+  .wrap{max-width:880px;margin:0 auto;padding:0 14px}
+
+  /* Top bar */
+  header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#0c111b 70%,rgba(12,17,27,.86));border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+  .topgrid{display:flex;align-items:center;gap:14px;padding:10px 0;flex-wrap:wrap}
+  .brand{display:flex;flex-direction:column;line-height:1.15}
+  .brand b{font-size:15px;letter-spacing:.02em}
+  .brand span{font-size:11px;color:var(--dim);font-family:var(--mono)}
+  .ctrls{display:flex;gap:10px;align-items:flex-end;margin-left:auto;flex-wrap:wrap}
+  .field{display:flex;flex-direction:column;gap:3px}
+  .field label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .field input{width:96px;background:var(--elev);border:1px solid var(--line);border-radius:9px;color:var(--txt);
+    font-family:var(--mono);font-size:22px;font-weight:600;padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums}
+  .field input:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
+  .seg{display:inline-flex;background:var(--elev);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--muted);font-family:var(--ui);font-size:13px;padding:8px 13px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--teal);color:#062b27;font-weight:700}
+
+  /* Tabs */
+  nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0 0;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;background:var(--surface);border:1px solid var(--line);border-bottom:none;
+    border-radius:11px 11px 0 0;color:var(--muted);padding:10px 15px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .tab .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+  .tab[aria-selected="true"]{color:var(--txt);background:var(--elev)}
+  .tab:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+
+  /* Panels */
+  main{padding-top:16px}
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .phead{display:flex;align-items:baseline;gap:12px;border-left:4px solid var(--ac);padding:2px 0 2px 12px;margin-bottom:6px}
+  .phead h2{font-size:20px;letter-spacing:.01em}
+  .phead .first{font-size:13px;color:var(--ac);font-weight:600}
+  .sub{color:var(--dim);font-size:12px;margin:0 0 16px 16px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .card h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h3 .bar{width:18px;height:2px;background:var(--ac);border-radius:2px}
+
+  /* Dose readouts */
+  .dosegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .dose{background:var(--elev);border:1px solid var(--line);border-radius:11px;padding:12px 14px;position:relative;overflow:hidden}
+  .dose::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac)}
+  .dose .lab{font-size:11px;color:var(--muted);margin-bottom:5px;display:block}
+  .dose .val{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--ac);font-variant-numeric:tabular-nums;line-height:1}
+  .dose .unit{font-size:14px;color:var(--muted);font-weight:500;margin-left:4px}
+  .dose .note{font-size:11px;color:var(--dim);margin-top:6px;font-family:var(--mono)}
+  .dose.alt::before{background:var(--dim)}
+  .dose.alt .val{color:var(--txt)}
+
+  /* Steps */
+  ol.steps{list-style:none;counter-reset:s}
+  ol.steps li{counter-increment:s;position:relative;padding:9px 0 9px 40px;border-bottom:1px solid var(--line);font-size:14px}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:8px;width:26px;height:26px;border-radius:8px;
+    background:var(--elev);border:1px solid var(--ac);color:var(--ac);font-family:var(--mono);font-weight:700;font-size:13px;
+    display:grid;place-items:center}
+  ol.steps li b{color:var(--txt)}
+  ol.steps li .k{color:var(--ac);font-weight:600}
+
+  /* Warn */
+  .warn{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:11px;padding:12px 14px;margin-bottom:14px}
+  .warn h4{font-size:12px;color:#ff9a9a;letter-spacing:.06em;margin-bottom:7px;text-transform:uppercase}
+  .warn ul{list-style:none;font-size:13px}
+  .warn li{padding:3px 0 3px 18px;position:relative;color:#ffd9d9}
+  .warn li::before{content:"✕";position:absolute;left:0;color:#ff7a7a;font-weight:700;font-size:12px}
+  .doul{list-style:none;font-size:13px;margin-top:4px}
+  .doul li{padding:3px 0 3px 18px;position:relative;color:var(--muted)}
+  .doul li::before{content:"›";position:absolute;left:2px;color:var(--ac);font-weight:700}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:620px){.twocol{grid-template-columns:1fr}}
+
+  .ref{font-size:11px;color:var(--dim);line-height:1.6;margin-top:4px}
+  .ref b{color:var(--muted);font-weight:600}
+  details.refbox{margin-top:8px}
+  details.refbox summary{font-size:11px;color:var(--muted);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;list-style:none}
+  details.refbox summary::-webkit-details-marker{display:none}
+  details.refbox summary::before{content:"▸ ";color:var(--ac)}
+  details.refbox[open] summary::before{content:"▾ "}
+
+  .pill{display:inline-block;font-size:11px;font-family:var(--mono);background:var(--elev);border:1px solid var(--line);
+    border-radius:6px;padding:2px 7px;color:var(--ac);margin-right:5px}
+
+  .gradehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .gradehead .gtag{font-family:var(--mono);font-size:12px;color:var(--ac);font-weight:700}
+
+  footer{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+  .disc{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:11px;padding:11px 13px;font-size:11.5px;color:#ffd9d9;line-height:1.6}
+  .disc b{color:#ffb3b3}
+  /* Quick search */
+  .search{position:relative;flex:1 1 170px;min-width:150px}
+  .search input{width:100%;background:var(--elev);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-family:var(--ui);font-size:13px;padding:9px 30px 9px 12px}
+  .search input:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
+  .search .ic{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:13px;pointer-events:none}
+  .sugg{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--elev);border:1px solid var(--line);border-radius:10px;overflow:hidden auto;z-index:55;max-height:62vh;box-shadow:0 12px 32px rgba(0,0,0,.55);display:none}
+  .sugg.open{display:block}
+  .sugg button{display:flex;gap:9px;align-items:center;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--txt);padding:10px 12px;font-size:13px;cursor:pointer;font-family:var(--ui)}
+  .sugg button:last-child{border-bottom:0}
+  .sugg button:hover,.sugg button.sel{background:var(--surface)}
+  .sugg .sdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .sugg .skw{color:var(--dim);font-size:11px}
+  .sugg .stab{margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+
+  /* Timer FAB + panel */
+  .fab{position:fixed;right:16px;bottom:16px;z-index:60;width:54px;height:54px;border-radius:50%;background:var(--teal);color:#062b27;border:0;font-size:23px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);display:grid;place-items:center}
+  .fab .badge{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font-size:11px;font-family:var(--mono);display:grid;place-items:center;padding:0 5px}
+  .tpanel{position:fixed;right:16px;bottom:80px;z-index:60;width:min(340px,calc(100vw - 32px));max-height:70vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 14px 44px rgba(0,0,0,.6);display:none}
+  .tpanel.open{display:block}
+  .tpanel h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+  .chips button{background:var(--elev);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:12px;padding:7px 10px;cursor:pointer;font-family:var(--ui)}
+  .chips button:active{background:var(--teal);color:#062b27}
+  .trow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+  .trow .tname{font-size:13px}
+  .trow .tleft{margin-left:auto;font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .trow.due .tleft{color:var(--red)}
+  .trow.due{animation:flash .8s ease infinite}
+  @keyframes flash{0%,100%{background:transparent}50%{background:rgba(239,68,68,.18)}}
+  .trow button.x{background:transparent;border:1px solid var(--line);border-radius:7px;color:var(--muted);width:28px;height:28px;cursor:pointer;flex:0 0 auto}
+  .tempty{font-size:12px;color:var(--dim);line-height:1.5}
+
+  .toolbtn{background:var(--elev);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:13px;padding:9px 13px;cursor:pointer;font-family:var(--ui)}
+  .card.flash-card{animation:cardflash 1.6s ease}
+  @keyframes cardflash{0%{box-shadow:0 0 0 2px var(--ac)}100%{box-shadow:0 0 0 0 transparent}}
+
+  /* Print */
+  @media print{
+    header,.fab,.tpanel,.toolrow,.disc{display:none !important}
+    html,body{background:#fff;color:#111}
+    .wrap{max-width:none}
+    .panel{display:block !important;page-break-inside:auto;margin-bottom:14px}
+    .panel + .panel{page-break-before:always}
+    .card,.dose,.warn{background:#fff !important;border-color:#bbb !important;color:#111;break-inside:avoid}
+    .dose .val{color:#111 !important}
+    h2{color:#111}.phead{border-left-color:#111}
+    .sub,.note,.ref,.dose .lab,.dose .unit,.card h3,.warn h4,.warn li,.doul li{color:#222 !important}
+    details.refbox summary{color:#333}
+  }
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="topgrid">
+      <div class="brand">
+        <b>麻酔危機管理エイド</b>
+        <span>GOTO ANESTHESIA TOOLKIT · CRISIS</span>
+      </div>
+      <div class="ctrls">
+        <div class="seg" role="group" aria-label="患者区分">
+          <button id="mAdult" aria-pressed="true" onclick="setMode('adult')">成人</button>
+          <button id="mPed" aria-pressed="false" onclick="setMode('ped')">小児</button>
+        </div>
+        <div class="field">
+          <label for="wt">体重 kg</label>
+          <input id="wt" type="number" inputmode="decimal" value="60" min="2" max="200" step="0.5" oninput="recalc()">
+        </div>
+        <div class="search" role="search">
+          <input id="q" type="text" autocomplete="off" placeholder="薬剤・病態で検索→ジャンプ" oninput="doSearch()" onfocus="doSearch()" onkeydown="searchKey(event)">
+          <span class="ic">🔍</span>
+          <div class="sugg" id="sugg"></div>
+        </div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="緊急事態">
+      <button class="tab" role="tab" aria-selected="true" data-ac="--teal" onclick="show(0,this)"><span class="dot" style="background:var(--teal)"></span>LAST</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--amber" onclick="show(1,this)"><span class="dot" style="background:var(--amber)"></span>悪性高熱</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--rose" onclick="show(2,this)"><span class="dot" style="background:var(--rose)"></span>アナフィラキシー</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--violet" onclick="show(3,this)"><span class="dot" style="background:var(--violet)"></span>CICO / eFONA</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--red" onclick="show(4,this)"><span class="dot" style="background:var(--red)"></span>大量出血</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--sky" onclick="show(5,this)"><span class="dot" style="background:var(--sky)"></span>高K血症</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--orange" onclick="show(6,this)"><span class="dot" style="background:var(--orange)"></span>徐脈/心停止</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--green" onclick="show(7,this)"><span class="dot" style="background:var(--green)"></span>気管支痙攣</button>
+      <button class="tab" role="tab" aria-selected="false" data-ac="--pink" onclick="show(8,this)"><span class="dot" style="background:var(--pink)"></span>新生児蘇生</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ LAST ============ -->
+  <section class="panel active" id="p0" style="--ac:var(--teal)">
+    <div class="phead"><h2>局所麻酔薬全身中毒（LAST）</h2><span class="first">→ 投与中止・応援・脂肪乳剤キット・気道確保</span></div>
+    <p class="sub">区域麻酔中に痙攣・不整脈・循環虚脱が出現したらLASTを想起。脂肪乳剤(20%)を最優先で準備し、最寄りのECMO/CPB施設へ連絡。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>脂肪乳剤 20%（イントラリポス等）投与量</h3>
+      <div class="dosegrid" id="lastDose"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li>循環が安定しない場合：ボーラスを<b>1〜2回追加</b>し、持続を<b>2倍</b>へ。</li>
+        <li>循環安定後も<b>最低15分</b>は持続継続（2020版）。総量上限の目安 <b id="lastMax"></b>。</li>
+        <li>体重<b>70 kg</b>を境に、体重換算量／固定量プロトコルを自動表示。</li>
+      </ul>
+    </div>
+
+    <div class="warn">
+      <h4>ACLS時の修正点 — 避けるもの</h4>
+      <ul>
+        <li>バソプレシン</li><li>カルシウム拮抗薬・β遮断薬</li><li>リドカイン等の局所麻酔薬（追加投与）</li>
+      </ul>
+      <ul class="doul" style="margin-top:8px">
+        <li>アドレナリンは<b>≤1 µg/kg</b>の少量ボーラスに減量。</li>
+        <li>心室性不整脈は<b>アミオダロン</b>を選択。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>初期対応の手順</h3>
+      <ol class="steps">
+        <li><b>応援要請</b>・脂肪乳剤キット入手・最寄り<span class="k">ECMO/人工心肺施設に連絡</span></li>
+        <li><b>気道管理</b>：100% O₂、確実な気道確保。低酸素・アシドーシスは毒性を増悪させるため回避</li>
+        <li><b>痙攣</b>：ベンゾジアゼピン(ミダゾラム)で制御。循環不安定時はプロポフォール大量投与を避ける</li>
+        <li><b>脂肪乳剤20%</b>を上記投与量でボーラス→持続</li>
+        <li>心停止なら<span class="k">長時間のCPR</span>を覚悟（必要時ECMO）。蘇生は遷延しうる</li>
+      </ol>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref"><b>Neal JM, Neal EJ, Weinberg GL.</b> ASRA LAST Checklist: 2020 version. <i>Reg Anesth Pain Med</i>. 2021;46(1):81-82. ／ 第3次Practice Advisory（Executive Summary）: <i>Reg Anesth Pain Med</i>. 2018;43(2):113-123. ／ lipidrescue.org.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ MH ============ -->
+  <section class="panel" id="p1" style="--ac:var(--amber)">
+    <div class="phead"><h2>悪性高熱症（MH）</h2><span class="first">→ 誘発薬中止・ダントロレン・全力冷却</span></div>
+    <p class="sub">想起：分時換気量を上げても下がらないEtCO₂上昇＋頻脈＋筋硬直＋高体温（15分で0.5℃上昇 or ≥38.8℃／咬筋硬直）。揮発性麻酔薬・スキサメトニウムを直ちに中止。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>ダントロレン（ダントリウム静注用20mg）初期投与</h3>
+      <div class="dosegrid" id="mhDose"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>日本(JSA2025/添付文書)</b>：初回 2.0 mg/kg（最低1.0）を<b>約10分かけて</b>、改善まで<b>10分毎に反復</b>。</li>
+        <li>総量 <b id="mhMax"></b>（添付文書上限 7 mg/kg）。<b>海外(MHAUS/EMHG)</b>は初回2.5 mg/kg・効果あれば10 mg/kg超も。</li>
+        <li>1バイアル＝20 mg（D-マンニトール適量含有）／<b>注射用水60 mL</b>で溶解（生食・糖液は不可）。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>同時対応の手順</h3>
+      <ol class="steps">
+        <li><span class="k">揮発性麻酔薬・スキサメトニウム中止</span>・応援・MHカート・手術早期終了要請</li>
+        <li>100% O₂を<b>高流量（≥10 L/min）</b>・過換気（分時換気量2倍以上）でEtCO₂低下を図る</li>
+        <li><b>ダントロレン</b>を上記投与量で開始（<span class="k">治療の最優先</span>）</li>
+        <li><b>高K血症</b>治療（Ca・グルコース+インスリン・重炭酸）、アシドーシス補正、不整脈はアミオダロン</li>
+        <li>体温高値で<span class="k">積極的冷却</span>（38℃で中止・過冷却回避）。尿量<b>>1 mL/kg/h</b>を維持</li>
+        <li>気化器を外す／活性炭フィルター装着。<b>回路・ソーダライム交換は後回し可</b>（時間・人手を要する）</li>
+        <li>CK・K・血液ガス・凝固・ミオグロビン尿をモニタ。<b>最低24時間</b>・ICU管理（再燃に注意）</li>
+      </ol>
+    </div>
+
+    <div class="warn">
+      <h4>注意</h4>
+      <ul><li>ダントロレン併用下の<b>カルシウム拮抗薬は原則禁忌</b>（高K血症・循環虚脱/心停止）。不整脈はアミオダロン・β遮断薬</li></ul>
+      <details class="refbox"><summary>文献・連絡先</summary>
+        <p class="ref"><b>日本麻酔科学会</b> 悪性高熱症管理ガイドライン2025／<b>ダントリウム静注用20mg 添付文書</b>。／<b>EMHG 2024</b>（Glahn KPE, et al. <i>Br J Anaesth</i>. 2010;105(4):417-420 の改訂）。／ MHAUS Hotline・日本麻酔科学会 MH連絡体制を事前確認。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ ANAPHYLAXIS ============ -->
+  <section class="panel" id="p2" style="--ac:var(--rose)">
+    <div class="phead"><h2>周術期アナフィラキシー</h2><span class="first">→ 被疑薬中止・アドレナリン・大量輸液</span></div>
+    <p class="sub">原因薬（筋弛緩薬・抗菌薬・クロルヘキシジン・ラテックス・膠質液）を中止。重症度（Ring &amp; Messmer）に応じアドレナリンを静注。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>アドレナリン投与（モニタ下静注・重症度別）</h3>
+      <div class="dosegrid" id="anaIV"></div>
+      <div class="dosegrid" id="anaDose2" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>手順</h3>
+      <ol class="steps">
+        <li><span class="k">被疑薬を中止</span>・応援・100% O₂・（覚醒下なら）下肢挙上で臥位</li>
+        <li><b>アドレナリン</b>を重症度別に投与</li>
+        <li><b>急速輸液</b>（晶質液 <span id="anaFluid" class="k">—</span>）、反応不十分なら反復</li>
+        <li>難治性：<b>ノルアドレナリン持続</b>、バソプレシン、（β遮断薬服用例は）グルカゴン</li>
+        <li>第二選択：ヒドロコルチゾン・抗ヒスタミン薬（第一選択ではない）</li>
+        <li><b>血清トリプターゼ</b>を経時採血（発症直後・1〜2時間・24時間）。後日アレルギー検索へ</li>
+      </ol>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref">成人IV（20／100–200µg・1mg）・トリプターゼ3点法：<b>RCUK/AAGBI</b> 周術期アナフィラキシー。／小児IV（1・10 µg/kg）・IM：<b>APLS/RCUK</b>。／<b>JSA 2021</b>（低血圧0.2 µg/kg・循環虚脱0.05–0.3 mg）。／重症度＝Ring &amp; Messmer。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ CICO ============ -->
+  <section class="panel" id="p3" style="--ac:var(--violet)">
+    <div class="phead"><h2>CICO / 緊急外科的気道（eFONA）</h2><span class="first">→ CICO宣言・前頸部アクセス</span></div>
+    <p class="sub">Plan A（挿管）→B（声門上器具）→C（マスク）いずれも酸素化不能なら<b>CICO宣言→Plan D=eFONA</b>。完全な筋弛緩を確保。酸素化が回復すれば覚醒も選択。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>メス–ブジー–チューブ（成人CICOの既定・DAS 2025）</h3>
+      <ol class="steps">
+        <li>非利き手で<b>laryngeal handshake</b>、正中で輪状甲状膜(CTM)を同定</li>
+        <li>CTM触知不能なら<b>正中を縦に8–10cm皮膚切開</b>→鈍的剥離し示指でCTM触知（触知可/エコー確認済みなら皮膚から横切開も可）</li>
+        <li>CTMを<b>横切開(stab)</b>、刃を<span class="k">尾側</span>へ向け90°回転</li>
+        <li>ブジーをメス刃に沿わせ気管内へ→潤滑した<b>6.0 カフ付きチューブ</b>を回転させ挿入</li>
+        <li>カフ注入、<span class="k">波形カプノグラフィ</span>で確認し換気・固定</li>
+      </ol>
+    </div>
+
+    <div class="warn">
+      <h4>原則</h4>
+      <ul style="list-style:none">
+        <li style="padding-left:0;color:#ffd9d9">酸素化が最優先。CICO宣言を遅らせない。器具の選択より「前頸部に到達する」決断が救命的。</li>
+      </ul>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref"><b>Ahmad I, et al.</b> DAS 2025 guidelines for unanticipated difficult tracheal intubation in adults. <i>Br J Anaesth</i>. 2026;136(1):283-307（前版: Frerk C, et al. 2015;115(6):827-848）。／ Vortex Approach（Chrimes）。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ MTP ============ -->
+  <section class="panel" id="p4" style="--ac:var(--red)">
+    <div class="phead"><h2>大量出血 / 大量輸血プロトコル（MTP）</h2><span class="first">→ MTP起動・1:1:1・トラネキサム酸</span></div>
+    <p class="sub">致死的三徴（低体温・アシドーシス・凝固障害）を回避。早期に固定比輸血とトラネキサム酸を開始。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>初期投与（成人＝固定／小児＝体重換算）</h3>
+      <div class="dosegrid" id="mtpDose"></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>到達目標と手順</h3>
+      <ol class="steps">
+        <li><span class="k">MTP起動</span>・応援・太い静脈路2本・急速輸液装置・加温</li>
+        <li><b>1:1:1</b>で輸血、<b>トラネキサム酸</b>を上記で開始</li>
+        <li><b>許容的低血圧</b>：止血まで SBP 80–90 / MAP 50–60。<b>重症TBIは MAP≥80</b>維持</li>
+        <li><b>イオン化Ca 1.1–1.3 mmol/L</b>維持（&lt;0.9で速やかに是正）：<b>塩化Ca優先</b>（肝障害時は特に）</li>
+        <li><b>フィブリノゲン &lt;1.5 g/Lで補充</b>（初期3–4g、クリオ/フィブリノゲン製剤）。<b>血小板</b>：持続出血&gt;50 ／ TBI&gt;100</li>
+        <li><span class="k">低体温・アシドーシス回避</span>。可能なら ROTEM/TEG 指向</li>
+      </ol>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref"><b>CRASH-2.</b> <i>Lancet</i>. 2010;376:23-32（TXA）／<b>CRASH-3</b>（TBI）2019。／<b>Rossaint R, et al.</b> European guideline on major bleeding and coagulopathy following trauma: sixth edition. <i>Crit Care</i>. 2023;27:80。／<b>PROPPR.</b> <i>JAMA</i>. 2015;313:471-482（1:1:1）。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ HYPERKALAEMIA ============ -->
+  <section class="panel" id="p5" style="--ac:var(--sky)">
+    <div class="phead"><h2>高カリウム血症（緊急）</h2><span class="first">→ ①心筋保護(Ca) ②細胞内移行 ③体外除去</span></div>
+    <p class="sub">血清K ≥6.5 mmol/L、または ECG変化（テント状T→PR延長/P消失→QRS延長→sine wave）があれば緊急。順序＝<b>①カルシウムで心筋膜を保護→②インスリン+糖/β2刺激/重炭酸でKを細胞内へ→③利尿薬/K吸着薬/透析で体外へ</b>。Caはそれ自体ではKを下げない。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>① 心筋保護：静注カルシウム（ECG変化があれば最優先）</h3>
+      <div class="dosegrid" id="hkCa"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li>適応：<b>ECG変化を伴う高K血症</b>（テント状T以上）。効果発現は数分・持続は約30–60分。</li>
+        <li>ECG変化が遷延／再出現すれば<b>反復可</b>。塩化Caは血管外漏出で組織壊死、グルコン酸Caより末梢から安全。</li>
+        <li><b>ジゴキシン中毒疑い例はCa緩徐投与</b>（高Ca＋ジゴキシンは"stone heart"のリスク）。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>② K細胞内移行：インスリン＋ブドウ糖（中心的治療）</h3>
+      <div class="dosegrid" id="hkIns"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>成人(UKKA2023)</b>：速効型インスリン10単位＋50%ブドウ糖50mL(=25g)を約15分で。効果発現15分・持続2–6時間。</li>
+        <li><b>低血糖は最頻の合併症</b>。治療前血糖<7.0 mmol/L(126mg/dL)なら<b>10%ブドウ糖50mL/h×5h(25g)</b>を追加。</li>
+        <li>血糖を <b>0,30,60,90,120,180,240,300,360分</b>で測定。血清Kは<b>1,2,4,6,24時間</b>で再検。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>② K細胞内移行：β2刺激薬・重炭酸（補助）</h3>
+      <div class="dosegrid" id="hkBeta"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>サルブタモール</b>はインスリン+糖と併用（単独不可）。頻脈・振戦に注意、虚血性心疾患では慎重に。</li>
+        <li><b>重炭酸Naはルーチン使用しない</b>。代謝性アシドーシス併発例で考慮。Ca投与ラインと同一ルートで混合不可（沈殿）。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>③ 体外除去：利尿薬・K吸着薬・透析</h3>
+      <ul class="doul">
+        <li><b>ループ利尿薬</b>（フロセミド）：尿量があり溢水例で腎排泄を促進。低容量例には不適。</li>
+        <li><b>新規K吸着薬</b>：ジルコニウムシクロケイ酸Na(ロケルマ) 重症で推奨／パチロマー（K≥6.0で選択肢）。<b>ポリスチレンスルホン酸Ca/Na（旧来樹脂）は急性期にルーチン使用しない</b>（UKKA2023）。</li>
+        <li><b>透析</b>：薬物治療抵抗性・乏尿性腎不全・既存透析患者の重症高K血症で緊急適応。透析可能でも<b>ECG変化があればまずCa</b>。</li>
+      </ul>
+    </div>
+
+    <div class="warn">
+      <h4>周術期での想起・トリガー</h4>
+      <ul style="list-style:none">
+        <li style="padding-left:0;color:#ffd9d9"><b>スキサメトニウム</b>：熱傷・脱神経(脊損/脳卒中)・重度筋外傷・長期不動・神経筋疾患で<b>致死的高K（心停止）→これらでは禁忌</b>。受傷後<b>約24h〜7–10日でACh受容体upregulation</b>がピーク（急性期超急性期は別途リスク評価）。</li>
+        <li style="padding-left:0;color:#ffd9d9;margin-top:6px"><b>悪性高熱症</b>：横紋筋融解で高K→不整脈/心停止。MHタブのダントロレンと併行で本プロトコルを適用。<b>ダントロレン併用下のCa拮抗薬は禁忌</b>。</li>
+        <li style="padding-left:0;color:#ffd9d9;margin-top:6px"><b>大量輸血</b>：古い/照射赤血球・急速大量投与で高K（特に小児・腎障害・低灌流）。心電図監視＋イオン化Ca維持。</li>
+      </ul>
+      <details class="refbox"><summary>心電図の進行（K濃度の目安）</summary>
+        <p class="ref">テント状T波（≈6.0〜）→ PR延長・P波平低化/消失・QRS幅延長（≈7.0〜）→ <b>sine wave</b>（QRSとTの融合, ≈8.0〜）→ VF/asystole。<b>正常ECGでも致死的不整脈は否定できない</b>（数値とECGは個人差大）。</p>
+      </details>
+      <details class="refbox"><summary>文献・出典</summary>
+        <p class="ref"><b>成人：</b>UK Kidney Association (UKKA). Clinical Practice Guidelines: Treatment of Acute Hyperkalaemia in Adults (2023). Ca:30mL 10%グルコン酸Ca/10min(ECG変化時)・心停止は10mL 10%塩化Ca/5min;インスリン10単位+25gブドウ糖;サルブタモール10–20mg neb;重炭酸非ルーチン;SZC/パチロマー;旧樹脂非推奨。<a href="https://www.ukkidney.org/health-professionals/guidelines/treatment-acute-hyperkalaemia-adults-0">ukkidney.org</a> ／ <a href="https://guidelines.ukkidney.org/hyperkalaemia/">guidelines.ukkidney.org/hyperkalaemia</a><br>
+        <b>小児：</b>RCH Melbourne Clinical Practice Guideline: Hyperkalaemia（グルコン酸Ca0.5mL/kg・APLS/BNFc準拠;インスリン0.1U/kg+10%ブドウ糖5mL/kg=0.5g/kg;サルブタモール≤25kg2.5mg・>25kg5mg;重炭酸1mmol/kg;樹脂0.5–1g/kg）。<a href="https://www.rch.org.au/clinicalguide/guideline_index/hyperkalaemia/">rch.org.au</a><br>
+        <b>ACLS：</b>AHA ECC（塩化Ca・インスリン+D50・重炭酸・透析）。<b>MH：</b>MHAUS acute MH管理（高K=過換気+重炭酸+インスリン/糖, 致死的不整脈にCaCl 10–30mg/kg）<a href="http://pie.med.utoronto.ca/MH/MH_content/acuteTreatment.html">MHAUS/UToronto</a>。<b>スキサメトニウム：</b>Anectine添付文書(FDA)。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ ACLS (徐脈/心停止) ============ -->
+  <section class="panel" id="p6" style="--ac:var(--orange)">
+    <div class="phead"><h2>徐脈 / 心停止（ACLS・PALS）</h2><span class="first">→ 質の高いCPR・アドレナリン・除細動・可逆的原因</span></div>
+    <p class="sub">不安定徐脈：アトロピン→無効なら経皮ペーシング/昇圧。無脈：直ちにCPR、リズム確認2分毎、ショック適応(VF/無脈性VT)は除細動。可逆的原因<b>4H4T</b>を同時検索。成人＝固定／小児＝体重換算。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>不安定徐脈（症状性）</h3>
+      <div class="dosegrid" id="aclsBrady"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li>アトロピン無効なら<b>経皮ペーシング(TCP)</b>、および/または昇圧薬持続。鎮痛・鎮静を併用。</li>
+        <li>小児：まず<b>酸素化・換気</b>。HR&lt;60/分＋循環不全が続けば<b>CPR開始＋アドレナリン0.01mg/kg</b>。アトロピンは迷走神経性/AVブロック限定。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>心停止（VF/無脈性VT・PEA/心静止）</h3>
+      <div class="dosegrid" id="aclsArrest"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>質の高いCPR</b>：圧迫100–120/分・深さ成人≥5cm/小児は胸郭1/3、完全リコイル、過換気回避。リズム/脈確認は<b>2分毎</b>。</li>
+        <li>アミオダロン・リドカインは<b>ショック適応(VF/無脈性VT)</b>に。アドレナリンはPEA/心静止では速やかに、ショック適応は3回目ショック後が目安。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>小児CPRの質（乳児／幼児・小児）— JRC主・AHA併記</h3>
+      <div class="twocol">
+        <ul class="doul">
+          <li><b>乳児(1歳未満)</b>：2人法＝両母指胸郭包み込み法／1人法＝2本指。胸骨下半分。深さ<b>前後径1/3≈4cm</b>。脈は上腕動脈。</li>
+          <li><b>幼児・小児</b>：片手or両手・胸骨下半分。深さ<b>1/3≈5cm</b>（6cm超えない）。脈は頸/大腿動脈。</li>
+          <li>共通：<b>100–120/分</b>・完全リコイル・中断最小。</li>
+        </ul>
+        <ul class="doul">
+          <li>圧迫:換気＝<b>2人 15:2／1人 30:2</b>。小児は呼吸原性が多く<span class="k">換気・酸素化が最重要</span>。</li>
+          <li>高度気道確保後：連続圧迫＋換気（<b>JRC 約10/分／AHA 20–30/分=2–3秒に1回</b>）、過換気回避。</li>
+          <li>除細動：<b>JRC 4 J/kg統一</b>／AHA 2→4→≧4（最大10）。リズム確認2分毎。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>可逆的原因 4H4T（同時に検索・是正）</h3>
+      <div class="twocol">
+        <ul class="doul">
+          <li><b>H</b>ypoxia 低酸素</li>
+          <li><b>H</b>ypovolaemia 循環血液量減少</li>
+          <li><b>H</b>ydrogen ion アシドーシス</li>
+          <li><b>H</b>ypo/<b>H</b>yper-K（＋小児は<b>低血糖</b>）・代謝</li>
+          <li><b>H</b>ypothermia 低体温</li>
+        </ul>
+        <ul class="doul">
+          <li><b>T</b>ension pneumothorax 緊張性気胸→穿刺減圧</li>
+          <li><b>T</b>amponade 心タンポナーデ</li>
+          <li><b>T</b>oxins 中毒（<span class="k">LAST→脂肪乳剤・アドレナリン減量</span>）</li>
+          <li><b>T</b>hrombosis 肺塞栓</li>
+          <li><b>T</b>hrombosis 冠動脈（心筋梗塞）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="warn">
+      <h4>周術期の心停止で特に</h4>
+      <ul style="list-style:none">
+        <li style="padding-left:0;color:#ffd9d9"><b>LAST由来</b>：標準ACLSと異なる。20%脂肪乳剤を早期、<b>アドレナリンは&lt;1µg/kgに減量</b>、バソプレシン/Ca拮抗薬/β遮断薬/局麻を避ける（→LASTタブ）。</li>
+        <li style="padding-left:0;color:#ffd9d9;margin-top:6px"><b>アナフィラキシー由来</b>：心停止前はIVアドレナリン50→100→200µg滴定→難治で持続。心停止後は標準1mg＋大量輸液（→アナフィラキシータブ）。</li>
+      </ul>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref"><b>AHA 2020/2025</b> ACLS Adult Cardiac Arrest / Bradycardia Algorithm、<b>PALS</b> Pediatric Cardiac Arrest / Bradycardia。／<b>JRC蘇生ガイドライン2020</b>（成人ALS・小児PLS）。／<b>ERC 2021</b>。小児アミオダロンはAHA 5mg/kg(最大300mg・最大3回)、JRC 2.5–5mg/kg。日本ではJRC準拠（代替にニフェカラント0.3mg/kg）。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ BRONCHOSPASM (気管支痙攣) ============ -->
+  <section class="panel" id="p7" style="--ac:var(--green)">
+    <div class="phead"><h2>重篤な気管支痙攣 / 術中喘息</h2><span class="first">→ 100%O₂・麻酔深度↑・サルブタモール・難治はアドレナリン</span></div>
+    <p class="sub">原因不明の気道内圧上昇・喘鳴・呼気延長・EtCO₂波形のシャークフィン。<b>喘鳴消失＝air movement無し＝最重症</b>。アナフィラキシー・チューブ閉塞・気胸を必ず除外。成人＝固定／小児＝体重換算。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>即時対応（START）</h3>
+      <ol class="steps">
+        <li>応援要請・<b>100% O₂</b>・手術/刺激を中止</li>
+        <li><b>麻酔深度を上げる</b>：揮発性麻酔薬（気管支拡張）／プロポフォール／ケタミン。<span class="k">急速濃度上昇では刺激性のisoflurane/desfluraneを避け</span>sevofluraneへ</li>
+        <li>用手換気で抵抗を確認、<b>気管チューブ位置異常・閉塞・片肺/食道挿管を除外</b></li>
+        <li>アナフィラキシー疑い（紅斑・低血圧・蕁麻疹）なら<span class="k">アナフィラキシータブへ</span></li>
+        <li>下記を投与：<b>第一選択＝サルブタモール吸入</b>、静注は第二選択</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>サルブタモール（β2刺激薬・第一選択）＋イプラトロピウム</h3>
+      <div class="dosegrid" id="bsSalb"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>MDIは呼吸回路アダプタ経由</b>で複数パフを反復。重症はネブライザー、難治で静注。</li>
+        <li>イプラトロピウムをSABAに併用（重症で4–6時間毎）。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>アドレナリン（重症・難治性）</h3>
+      <div class="dosegrid" id="bsAdr"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>アナフィラキシー確定時は専用タブの量</b>（成人初回50µg／小児1µg/kg）を使用。重複投与に注意。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>補助薬</h3>
+      <div class="dosegrid" id="bsAdj"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li><b>硫酸Mg</b>は単回のみ・血圧監視（ネブMgは非推奨/GINA2024）。</li>
+        <li><b>アミノフィリンはテオフィリン内服中なら負荷省略</b>。治療域が狭く副作用多い。</li>
+        <li><b>ステロイドは即効性なし</b>（数時間後）。早期投与するが急性閉塞は直接解除しない。</li>
+      </ul>
+    </div>
+
+    <div class="warn">
+      <h4>鑑別（喘鳴をきたす/模倣する病態）</h4>
+      <ul style="list-style:none">
+        <li style="padding-left:0;color:#ffd9d9"><b>アナフィラキシー</b>（紅斑/低血圧/蕁麻疹を伴えば強く疑う→専用タブ）／<b>チューブ・回路の閉塞/位置異常</b>（片肺・食道・キンク・分泌物）／<b>緊張性気胸</b>（患側呼吸音消失・気道内圧上昇・循環虚脱→穿刺減圧）／<b>肺水腫</b>（ピンク泡沫痰）。</li>
+      </ul>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref"><b>Association of Anaesthetists QRH 3-4 Bronchospasm (2019)</b>（成人・小児併記）。／<b>BTS/NICE/SIGN（SIGN 244, 2024）・GINA 2024</b> acute asthma。／アドレナリン値・アナフィラキシー連携は<b>RCUK/AoA 周術期アナフィラキシー(2024)</b>。小児静注量はBTS/SIGN準拠。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ NEONATAL (新生児蘇生) ============ -->
+  <section class="panel" id="p8" style="--ac:var(--pink)">
+    <div class="phead"><h2>新生児蘇生（分娩室・NCPR）</h2><span class="first">→ 換気優先・3:1・HRが最重要指標</span></div>
+    <p class="sub">成人/小児の「圧迫優先」と異なり、新生児はほぼ呼吸原性＝<b>有効な人工呼吸(PPV)が最優先</b>。心拍数(HR)が蘇生の最重要指標。体重kgを入力（新生児は約3kg）。準拠：NCPR/JRC2020主・NRP/AHA併記。</p>
+
+    <div class="card">
+      <h3><span class="bar"></span>出生直後の流れ（30秒ごとに評価）</h3>
+      <ol class="steps">
+        <li><b>初期評価</b>：①早産児か ②弱い呼吸/啼泣 ③筋緊張低下 — 1つでも該当なら蘇生へ</li>
+        <li><b>初期処置</b>：保温→体位(sniffing)→（必要時）気道吸引→乾燥・刺激。<span class="k">ルーチン吸引・胎便児のルーチン気管吸引は不要</span></li>
+        <li><b>HR&lt;100/分 or 無呼吸/喘ぎ</b> → <b>人工呼吸(PPV)を開始</b>＋パルスオキシメータ(右手)装着</li>
+        <li>有効PPV<b>30秒</b>後も<b>HR&lt;60/分</b> → <b>胸骨圧迫＋PPV(3:1)</b>・酸素を100%へ</li>
+        <li>なお<b>HR&lt;60</b>が続く → <b>アドレナリン</b>(下記)・循環血液量減少/気胸を考慮</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>人工呼吸(PPV)・胸骨圧迫</h3>
+      <ul class="doul">
+        <li><b>PPV 40–60回/分</b>。有効の指標＝<b>HR上昇</b>・胸郭挙上。PEEP 5（早産児に提案）。PIPはNCPR未規定（AHA参考：正期≤30／早産20–25 cmH₂O）。</li>
+        <li>換気不良なら圧迫に進まず<b>MR.SOPA</b>で是正（Mask・Reposition・Suction・Open・Pressure↑・Alternative airway）。</li>
+        <li>胸骨圧迫：<b>圧迫:換気＝3:1（圧迫90＋換気30＝120/分）</b>・両母指法・胸骨下1/3・前後径1/3。同時に酸素100%。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>酸素・SpO₂目標（右手 preductal）</h3>
+      <ul class="doul">
+        <li>開始：<b>正期産(≥35週)＝空気21%</b>（100%開始はしない）／早産(&lt;32週)＝21–30%。圧迫時は100%、回復・SpO₂&gt;95%で減量。</li>
+      </ul>
+      <div class="dosegrid" style="margin-top:10px">
+        <div class="dose"><span class="lab">生後1分</span><span class="val">60</span><span class="unit">%</span></div>
+        <div class="dose"><span class="lab">生後3分</span><span class="val">70</span><span class="unit">%</span></div>
+        <div class="dose"><span class="lab">生後5分</span><span class="val">80</span><span class="unit">%</span></div>
+        <div class="dose alt"><span class="lab">生後10分</span><span class="val">≥90</span><span class="unit">%</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="bar"></span>薬剤・輸液・気道（体重換算）</h3>
+      <div class="dosegrid" id="neoDose"></div>
+      <ul class="doul" style="margin-top:12px">
+        <li>アドレナリンは投与後<b>生食でフラッシュ</b>。気管内は静脈路確保までの代替（確保後は静注へ）。</li>
+        <li>気管チューブ内径：<b>&lt;1kg 2.5／1–2kg 3.0／2–3kg 3.5／&gt;3kg 3.5–4.0 mm</b>（簡易式 在胎週数÷10）。声門上器具(SGA)は&gt;34週・&gt;2000gでマスク換気不成功時の代替。</li>
+        <li>低血糖は蘇生後早期に測定し補正。炭酸水素Naはルーチン非推奨。</li>
+      </ul>
+    </div>
+
+    <div class="warn">
+      <h4>最重要・低体温療法</h4>
+      <ul style="list-style:none">
+        <li style="padding-left:0;color:#ffd9d9"><b>換気優先</b>（胸が上がる換気の確立が圧迫より先）／<b>HRが最重要指標</b>・比は<b>3:1</b>／酸素は<b>控えめ開始＋SpO₂目標で滴定</b>。</li>
+        <li style="padding-left:0;color:#ffd9d9;margin-top:6px">在胎<b>≥36週</b>で中等度〜重度のHIEが疑われれば<b>低体温療法</b>を検討（クーリングセンターでの実施が望ましい）。</li>
+      </ul>
+      <details class="refbox"><summary>文献</summary>
+        <p class="ref"><b>日本周産期・新生児医学会 新生児蘇生法(NCPR)</b>／<b>JRC蘇生ガイドライン2020・2025</b> 新生児の蘇生。併記：<b>NRP 8th edition（AAP/AHA）・AHA 2020/2025 Neonatal・ANZCOR 13.5</b>。PIP数値・遅延臍帯結紮の秒数はNCPR本文で未確定（施設プロトコル/参考値）。</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <div class="toolrow" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="toolbtn" onclick="printAll()">🖨 全タブを印刷 / PDF</button>
+      <button class="toolbtn" id="installBtn" style="display:none" onclick="installPWA()">⬇︎ ホーム画面に追加</button>
+    </div>
+    <div class="disc">
+      <b>注意：</b>本ツールは公表ガイドラインに基づく意思決定支援（cognitive aid）であり、臨床判断・最新の各ガイドライン・施設プロトコル・添付文書での確認に代わるものではありません。投与量・製剤規格は使用前に必ず照合してください。<b>緊急時はまず応援要請を。</b>
+    </div>
+  </footer>
+</main>
+
+<button class="fab" id="fab" onclick="toggleTimers()" aria-label="反復投与タイマー">⏱<span class="badge" id="tbadge" style="display:none">0</span></button>
+<div class="tpanel" id="tpanel">
+  <h4>反復投与タイマー</h4>
+  <div class="chips" id="tchips"></div>
+  <div id="tlist"></div>
+</div>
+
+<script>
+  var mode='adult';
+  function num(v){return Math.round(v*10)/10;}
+  function fmt(v){var n=num(v);return (n%1===0)?n.toFixed(0):n.toFixed(1);}
+  function fmt2(v){return (Math.round(v*100)/100).toString();}  /* IM等の小数2桁: 0.15/0.25 を丸めない */
+  function el(html){var d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
+
+  function setMode(m){
+    mode=m;
+    document.getElementById('mAdult').setAttribute('aria-pressed', m==='adult');
+    document.getElementById('mPed').setAttribute('aria-pressed', m==='ped');
+    if(m==='ped' && Number(document.getElementById('wt').value)>30) document.getElementById('wt').value=15;
+    if(m==='adult' && Number(document.getElementById('wt').value)<30) document.getElementById('wt').value=60;
+    recalc();
+  }
+
+  function show(i,btn){
+    document.querySelectorAll('.panel').forEach(function(p,idx){p.classList.toggle('active',idx===i);});
+    document.querySelectorAll('.tab').forEach(function(t){t.setAttribute('aria-selected','false');});
+    btn.setAttribute('aria-selected','true');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function recalc(){
+    var kg=Number(document.getElementById('wt').value)||0;
+
+    /* ---- LAST ---- */
+    var maxT  = 12*kg;             // mL
+    var lastHTML;
+    if(kg < 70){
+      var bolus=1.5*kg, rate=0.25*kg, dbl=0.5*kg;
+      lastHTML =
+        '<div class="dose"><span class="lab">初回ボーラス（1.5 mL/kg）</span><span class="val">'+fmt(bolus)+'</span><span class="unit">mL</span><div class="note">2–3分かけて急速</div></div>'+
+        '<div class="dose"><span class="lab">持続（0.25 mL/kg/min）</span><span class="val">'+fmt(rate)+'</span><span class="unit">mL/min</span><div class="note">≈ '+fmt(rate*60)+' mL/hr</div></div>'+
+        '<div class="dose"><span class="lab">難治時：持続2倍</span><span class="val">'+fmt(dbl)+'</span><span class="unit">mL/min</span><div class="note">＋ボーラス再投与</div></div>'+
+        '<div class="dose alt"><span class="lab">総量上限（12 mL/kg）</span><span class="val">'+fmt(maxT)+'</span><span class="unit">mL</span><div class="note">初期30分の目安</div></div>';
+    } else {
+      lastHTML =
+        '<div class="dose"><span class="lab">初回ボーラス（≥70kg 固定）</span><span class="val">100</span><span class="unit">mL</span><div class="note">2–3分かけて急速</div></div>'+
+        '<div class="dose"><span class="lab">持続（≥70kg 固定）</span><span class="val">200–250</span><span class="unit">mL</span><div class="note">15–20分かけて</div></div>'+
+        '<div class="dose"><span class="lab">難治時</span><span class="val">×2</span><span class="unit"></span><div class="note">再ボーラス＋持続増量</div></div>'+
+        '<div class="dose alt"><span class="lab">総量上限（12 mL/kg）</span><span class="val">'+fmt(maxT)+'</span><span class="unit">mL</span><div class="note">初期30分の目安</div></div>';
+    }
+    document.getElementById('lastDose').innerHTML=lastHTML;
+    document.getElementById('lastMax').textContent = fmt(maxT)+' mL';
+
+    /* ---- MH（日本基準を主） ---- */
+    var mhInit = 2.0*kg;              // JSA: 初回2.0mg/kg(最低1.0)を約10分
+    var mhVials= Math.ceil(mhInit/20);
+    var mhWater= mhVials*60;
+    var maxJP  = 7*kg;               // 添付文書上限
+    var vialsJP= Math.ceil(maxJP/20);
+    var mhHTML =
+      '<div class="dose"><span class="lab">初回（2.0 mg/kg・10分／最低1.0）</span><span class="val">'+fmt(mhInit)+'</span><span class="unit">mg</span><div class="note">10分毎に反復</div></div>'+
+      '<div class="dose"><span class="lab">必要バイアル数（20mg/V）</span><span class="val">'+mhVials+'</span><span class="unit">V</span><div class="note">切上げ</div></div>'+
+      '<div class="dose"><span class="lab">注射用水（60mL/V）</span><span class="val">'+mhWater+'</span><span class="unit">mL</span><div class="note">注射用水のみ</div></div>'+
+      '<div class="dose alt"><span class="lab">日本上限 7 mg/kg（'+vialsJP+' V）</span><span class="val">'+fmt(maxJP)+'</span><span class="unit">mg</span><div class="note">海外は10mg/kg超も</div></div>';
+    document.getElementById('mhDose').innerHTML=mhHTML;
+    document.getElementById('mhMax').textContent = fmt(maxJP)+' mg';
+
+    /* ---- ANAPHYLAXIS（成人=各国/RCUK系・小児=体重換算） ---- */
+    var imCap = (mode==='ped')?0.3:0.5;
+    var im = Math.min(0.01*kg, imCap);
+    var anaIVhtml;
+    if(mode==='ped'){
+      var arrest = Math.min(10*kg, 1000);
+      anaIVhtml =
+        '<div class="dose"><span class="lab">非心停止（中等症〜重症）IV</span><span class="val">'+fmt(1*kg)+'</span><span class="unit">µg</span><div class="note">1 µg/kg・緩徐/滴定・反復</div></div>'+
+        '<div class="dose alt"><span class="lab">心停止 IV</span><span class="val">'+fmt(arrest)+'</span><span class="unit">µg</span><div class="note">10 µg/kg（最大1mg）・3–5分毎</div></div>'+
+        '<div class="dose"><span class="lab">IM（静脈路/モニタ無し）</span><span class="val">'+fmt2(im)+'</span><span class="unit">mg</span><div class="note">0.01 mg/kg（最大0.3）・大腿前外側</div></div>';
+    } else {
+      anaIVhtml =
+        '<div class="dose"><span class="lab">Grade II（低血圧）IV</span><span class="val">20</span><span class="unit">µg</span><div class="note">少量から滴定・反復</div></div>'+
+        '<div class="dose"><span class="lab">Grade III（ショック/気管支痙攣）IV</span><span class="val">100–200</span><span class="unit">µg</span><div class="note">反復→持続へ</div></div>'+
+        '<div class="dose alt"><span class="lab">Grade IV（心停止）IV</span><span class="val">1</span><span class="unit">mg</span><div class="note">3–5分毎・CPR/ALS</div></div>'+
+        '<div class="dose"><span class="lab">IM（静脈路/モニタ無し）</span><span class="val">'+fmt2(im)+'</span><span class="unit">mg</span><div class="note">0.01 mg/kg（最大0.5）・大腿前外側</div></div>';
+    }
+    document.getElementById('anaIV').innerHTML = anaIVhtml;
+    var infLow=0.05*kg, infHigh=0.1*kg;
+    var fluid=20*kg;
+    document.getElementById('anaFluid').textContent = fmt(fluid)+' mL（20 mL/kg）';
+    document.getElementById('anaDose2').innerHTML =
+      '<div class="dose alt"><span class="lab">持続開始（0.05–0.1 µg/kg/min）</span><span class="val">'+fmt(infLow)+'–'+fmt(infHigh)+'</span><span class="unit">µg/min</span><div class="note">難治性に滴定（→0.5まで）</div></div>'+
+      '<div class="dose alt"><span class="lab">急速輸液（20 mL/kg）</span><span class="val">'+fmt(fluid)+'</span><span class="unit">mL</span><div class="note">反復可</div></div>';
+
+    /* ---- MTP（成人=固定・小児=体重換算） ---- */
+    var mtpHTML;
+    if(mode==='ped'){
+      var txaP = Math.min(15*kg, 1000);
+      mtpHTML =
+        '<div class="dose"><span class="lab">TXA 初回（15 mg/kg・10分）</span><span class="val">'+fmt(txaP)+'</span><span class="unit">mg</span><div class="note">最大1g・受傷3h以内</div></div>'+
+        '<div class="dose"><span class="lab">TXA 維持（2 mg/kg/h）</span><span class="val">'+fmt(2*kg)+'</span><span class="unit">mg/h</span><div class="note">持続（〜8h）</div></div>'+
+        '<div class="dose"><span class="lab">輸血（体重ベース）</span><span class="val">10–20</span><span class="unit">mL/kg</span><div class="note">RBC/FFP=1:1指向</div></div>';
+    } else {
+      mtpHTML =
+        '<div class="dose"><span class="lab">TXA 初回</span><span class="val">1</span><span class="unit">g / 10分</span><div class="note">受傷後3時間以内に</div></div>'+
+        '<div class="dose"><span class="lab">TXA 維持</span><span class="val">1</span><span class="unit">g / 8時間</span><div class="note">持続投与</div></div>'+
+        '<div class="dose"><span class="lab">輸血比 RBC:FFP:PLT</span><span class="val">1:1:1</span><span class="unit"></span><div class="note">初期経験的→VEMで調整</div></div>';
+    }
+    document.getElementById('mtpDose').innerHTML = mtpHTML;
+
+    /* ---- HYPERKALAEMIA（成人=UKKA2023固定・小児=RCH/APLS/BNFc体重換算） ---- */
+    var hkCaHTML, hkInsHTML, hkBetaHTML;
+    if(mode==='ped'){
+      /* 小児 Ca: グルコン酸Ca10% 0.5mL/kg(=0.11mmol/kg) max20mL / 塩化Ca10% 0.2mL/kg(=20mg/kg) max10mL */
+      var pGluc = Math.min(0.5*kg, 20);
+      var pCaCl = Math.min(0.2*kg, 10);
+      hkCaHTML =
+        '<div class="dose"><span class="lab">10%グルコン酸Ca（0.5 mL/kg）</span><span class="val">'+fmt(pGluc)+'</span><span class="unit">mL</span><div class="note">最大20mL・5–10分・末梢可</div></div>'+
+        '<div class="dose alt"><span class="lab">10%塩化Ca（0.2 mL/kg=20mg/kg）</span><span class="val">'+fmt(pCaCl)+'</span><span class="unit">mL</span><div class="note">最大10mL・中心静脈推奨</div></div>';
+      /* 小児 インスリン0.1U/kg(max10) + 10%ブドウ糖5mL/kg(=0.5g/kg) */
+      var pIns = Math.min(0.1*kg, 10);
+      var pG10 = 5*kg;        // mL of 10% glucose
+      var pGg  = 0.5*kg;      // grams
+      hkInsHTML =
+        '<div class="dose"><span class="lab">速効型インスリン（0.1 U/kg）</span><span class="val">'+fmt(pIns)+'</span><span class="unit">単位</span><div class="note">最大10単位・静注</div></div>'+
+        '<div class="dose"><span class="lab">10%ブドウ糖（5 mL/kg）</span><span class="val">'+fmt(pG10)+'</span><span class="unit">mL</span><div class="note">= '+fmt(pGg)+' g（0.5 g/kg）</div></div>'+
+        '<div class="dose alt"><span class="lab">血糖モニタ</span><span class="val">頻回</span><span class="unit"></span><div class="note">低血糖を必ず監視</div></div>';
+      /* 小児 サルブタモール neb: ≤25kg 2.5mg / >25kg 5mg / 重炭酸 1mmol/kg */
+      var pSalb = (kg<=25)?'2.5':'5';
+      var pBic  = 1*kg; // mmol = mL of 8.4%
+      hkBetaHTML =
+        '<div class="dose"><span class="lab">サルブタモール ネブ（体重別）</span><span class="val">'+pSalb+'</span><span class="unit">mg</span><div class="note">≤25kg:2.5 / >25kg:5・反復可</div></div>'+
+        '<div class="dose alt"><span class="lab">重炭酸Na（アシドーシス時 1mmol/kg）</span><span class="val">'+fmt(pBic)+'</span><span class="unit">mmol</span><div class="note">8.4%なら同mL・緩徐</div></div>';
+    } else {
+      hkCaHTML =
+        '<div class="dose"><span class="lab">10%グルコン酸Ca（既定）</span><span class="val">30</span><span class="unit">mL</span><div class="note">10分かけて・ECG変化時</div></div>'+
+        '<div class="dose alt"><span class="lab">10%塩化Ca（心停止/周心停止）</span><span class="val">10</span><span class="unit">mL</span><div class="note">5分かけて・中心静脈</div></div>';
+      hkInsHTML =
+        '<div class="dose"><span class="lab">速効型インスリン</span><span class="val">10</span><span class="unit">単位</span><div class="note">静注（5単位でも可）</div></div>'+
+        '<div class="dose"><span class="lab">50%ブドウ糖 50mL</span><span class="val">25</span><span class="unit">g</span><div class="note">約15分で</div></div>'+
+        '<div class="dose alt"><span class="lab">血糖<7.0なら10%糖を追加</span><span class="val">25</span><span class="unit">g</span><div class="note">50mL/h×5h</div></div>';
+      hkBetaHTML =
+        '<div class="dose"><span class="lab">サルブタモール ネブ</span><span class="val">10–20</span><span class="unit">mg</span><div class="note">補助・単独不可</div></div>'+
+        '<div class="dose alt"><span class="lab">重炭酸Na</span><span class="val">非ルーチン</span><span class="unit"></span><div class="note">アシドーシス併発時のみ考慮</div></div>';
+    }
+    document.getElementById('hkCa').innerHTML   = hkCaHTML;
+    document.getElementById('hkIns').innerHTML  = hkInsHTML;
+    document.getElementById('hkBeta').innerHTML = hkBetaHTML;
+
+    /* ---- ACLS 徐脈/心停止（成人=固定・小児=体重換算） ---- */
+    var bradyHTML, arrestHTML;
+    if(mode==='ped'){
+      var atr = Math.min(Math.max(0.02*kg,0.1),0.5);
+      bradyHTML =
+        '<div class="dose"><span class="lab">アドレナリン（第一選択）</span><span class="val">'+fmt2(Math.min(0.01*kg,1))+'</span><span class="unit">mg</span><div class="note">0.01 mg/kg・3–5分毎</div></div>'+
+        '<div class="dose"><span class="lab">アトロピン（迷走/AVブロック）</span><span class="val">'+fmt2(atr)+'</span><span class="unit">mg</span><div class="note">0.02mg/kg・最小0.1/最大0.5</div></div>'+
+        '<div class="dose alt"><span class="lab">アドレナリン持続</span><span class="val">'+fmt(0.1*kg)+'–'+fmt(0.3*kg)+'</span><span class="unit">µg/min</span><div class="note">0.1–0.3 µg/kg/min</div></div>';
+      arrestHTML =
+        '<div class="dose"><span class="lab">アドレナリン</span><span class="val">'+fmt2(Math.min(0.01*kg,1))+'</span><span class="unit">mg</span><div class="note">0.01mg/kg(最大1)・3–5分毎</div></div>'+
+        '<div class="dose"><span class="lab">アミオダロン（VF/無脈VT）</span><span class="val">'+fmt(Math.min(5*kg,300))+'</span><span class="unit">mg</span><div class="note">5mg/kg(最大300)・最大3回</div></div>'+
+        '<div class="dose"><span class="lab">除細動エネルギー</span><span class="val">'+fmt(4*kg)+'</span><span class="unit">J</span><div class="note">JRC 4J/kg統一・AHA 2→4(最大10)</div></div>'+
+        '<div class="dose alt"><span class="lab">リドカイン（代替）</span><span class="val">'+fmt(1*kg)+'</span><span class="unit">mg</span><div class="note">1 mg/kg</div></div>';
+    } else {
+      bradyHTML =
+        '<div class="dose"><span class="lab">アトロピン</span><span class="val">1</span><span class="unit">mg</span><div class="note">3–5分毎・最大3mg</div></div>'+
+        '<div class="dose"><span class="lab">アドレナリン持続</span><span class="val">2–10</span><span class="unit">µg/min</span><div class="note">反応で漸増</div></div>'+
+        '<div class="dose alt"><span class="lab">ドパミン持続</span><span class="val">5–20</span><span class="unit">µg/kg/min</span><div class="note">＋経皮ペーシング</div></div>';
+      arrestHTML =
+        '<div class="dose"><span class="lab">アドレナリン</span><span class="val">1</span><span class="unit">mg</span><div class="note">3–5分毎</div></div>'+
+        '<div class="dose"><span class="lab">アミオダロン</span><span class="val">300→150</span><span class="unit">mg</span><div class="note">VF/無脈性VT</div></div>'+
+        '<div class="dose"><span class="lab">除細動エネルギー</span><span class="val">120–200</span><span class="unit">J</span><div class="note">二相性・以降同等以上</div></div>'+
+        '<div class="dose alt"><span class="lab">リドカイン（代替）</span><span class="val">1–1.5</span><span class="unit">mg/kg</span><div class="note">→0.5–0.75反復</div></div>';
+    }
+    document.getElementById('aclsBrady').innerHTML = bradyHTML;
+    document.getElementById('aclsArrest').innerHTML = arrestHTML;
+
+    /* ---- 気管支痙攣（成人=固定・小児=体重換算） ---- */
+    var bsSalbHTML, bsAdrHTML, bsAdjHTML;
+    if(mode==='ped'){
+      bsSalbHTML =
+        '<div class="dose"><span class="lab">サルブタモール ネブ</span><span class="val">'+((kg<18)?'2.5':'5')+'</span><span class="unit">mg</span><div class="note">&lt;5歳2.5/≥5歳5・反復可</div></div>'+
+        '<div class="dose"><span class="lab">IVボーラス（15µg/kg）</span><span class="val">'+fmt(Math.min(15*kg,250))+'</span><span class="unit">µg</span><div class="note">5分で・最大250(乳児5µg/kg)</div></div>'+
+        '<div class="dose alt"><span class="lab">IV持続（0.5–1µg/kg/min）</span><span class="val">'+fmt(Math.min(0.5*kg,20))+'–'+fmt(Math.min(1*kg,20))+'</span><span class="unit">µg/min</span><div class="note">最大20µg/min</div></div>'+
+        '<div class="dose"><span class="lab">イプラトロピウム ネブ</span><span class="val">'+((kg<40)?'0.25':'0.5')+'</span><span class="unit">mg</span><div class="note">2–12歳0.25/>12歳0.5</div></div>';
+      bsAdrHTML =
+        '<div class="dose"><span class="lab">IVボーラス（0.1–1µg/kg）</span><span class="val">'+fmt(0.1*kg)+'–'+fmt(1*kg)+'</span><span class="unit">µg</span><div class="note">重症/難治・滴定</div></div>'+
+        '<div class="dose"><span class="lab">IM（10µg/kg）</span><span class="val">'+fmt(Math.min(10*kg,500))+'</span><span class="unit">µg</span><div class="note">0.01mg/kg・最大500</div></div>'+
+        '<div class="dose alt"><span class="lab">ネブ（1:1000）</span><span class="val">0.5</span><span class="unit">mL</span><div class="note">補助</div></div>';
+      bsAdjHTML =
+        '<div class="dose"><span class="lab">硫酸Mg（40–50mg/kg）</span><span class="val">'+fmt(Math.min(40*kg,2000))+'–'+fmt(Math.min(50*kg,2000))+'</span><span class="unit">mg</span><div class="note">20分・最大2g・単回</div></div>'+
+        '<div class="dose"><span class="lab">ヒドロコルチゾン（4mg/kg）</span><span class="val">'+fmt(Math.min(4*kg,100))+'</span><span class="unit">mg</span><div class="note">最大100・即効性なし</div></div>'+
+        '<div class="dose alt"><span class="lab">ケタミン 持続</span><span class="val">1–3</span><span class="unit">mg/kg/h</span><div class="note">ボーラス＋持続</div></div>'+
+        '<div class="dose"><span class="lab">アミノフィリン 負荷（5mg/kg）</span><span class="val">'+fmt(5*kg)+'</span><span class="unit">mg</span><div class="note">20分・内服中は省略</div></div>';
+    } else {
+      bsSalbHTML =
+        '<div class="dose"><span class="lab">サルブタモール ネブ</span><span class="val">5</span><span class="unit">mg</span><div class="note">MDIは回路から複数パフ</div></div>'+
+        '<div class="dose"><span class="lab">IVボーラス</span><span class="val">250</span><span class="unit">µg</span><div class="note">希釈・緩徐（第二選択）</div></div>'+
+        '<div class="dose alt"><span class="lab">IV持続</span><span class="val">5–20</span><span class="unit">µg/min</span><div class="note">難治時</div></div>'+
+        '<div class="dose"><span class="lab">イプラトロピウム ネブ</span><span class="val">0.5</span><span class="unit">mg</span><div class="note">SABA併用</div></div>';
+      bsAdrHTML =
+        '<div class="dose"><span class="lab">IVボーラス</span><span class="val">10–100</span><span class="unit">µg</span><div class="note">滴定（1:10,000）</div></div>'+
+        '<div class="dose"><span class="lab">IM（IV路無し）</span><span class="val">500</span><span class="unit">µg</span><div class="note">1:1,000</div></div>'+
+        '<div class="dose alt"><span class="lab">ネブ（1:1000）</span><span class="val">5</span><span class="unit">mL</span><div class="note">補助</div></div>';
+      bsAdjHTML =
+        '<div class="dose"><span class="lab">硫酸Mg</span><span class="val">2</span><span class="unit">g</span><div class="note">20分・単回・血圧監視</div></div>'+
+        '<div class="dose"><span class="lab">ヒドロコルチゾン</span><span class="val">200</span><span class="unit">mg</span><div class="note">4mg/kg・即効性なし</div></div>'+
+        '<div class="dose alt"><span class="lab">ケタミン</span><span class="val">20</span><span class="unit">mg</span><div class="note">ボーラス→1–3mg/kg/h</div></div>'+
+        '<div class="dose"><span class="lab">アミノフィリン 負荷</span><span class="val">5</span><span class="unit">mg/kg</span><div class="note">20分・内服中は省略</div></div>';
+    }
+    document.getElementById('bsSalb').innerHTML = bsSalbHTML;
+    document.getElementById('bsAdr').innerHTML = bsAdrHTML;
+    document.getElementById('bsAdj').innerHTML = bsAdjHTML;
+
+    /* ---- 新生児蘇生（体重換算・modeに依らず／新生児は約3kg） ---- */
+    var neoHTML =
+      '<div class="dose"><span class="lab">アドレナリン IV/IO（0.01–0.03mg/kg）</span><span class="val">'+fmt2(0.01*kg)+'–'+fmt2(0.03*kg)+'</span><span class="unit">mg</span><div class="note">1:10,000を '+fmt(0.1*kg)+'–'+fmt(0.3*kg)+'mL・3–5分毎</div></div>'+
+      '<div class="dose"><span class="lab">アドレナリン 気管内（0.05–0.1mg/kg）</span><span class="val">'+fmt2(0.05*kg)+'–'+fmt2(0.1*kg)+'</span><span class="unit">mg</span><div class="note">静脈路確保まで・'+fmt(0.5*kg)+'–'+fmt(1*kg)+'mL</div></div>'+
+      '<div class="dose"><span class="lab">等張晶質液（生食 10mL/kg）</span><span class="val">'+fmt(10*kg)+'</span><span class="unit">mL</span><div class="note">出血/循環血液量減少・5–10分・反復可</div></div>'+
+      '<div class="dose alt"><span class="lab">気管チューブ挿入長（体重+6）</span><span class="val">'+fmt(kg+6)+'</span><span class="unit">cm</span><div class="note">口唇マーク・CO₂検出器で確認</div></div>';
+    document.getElementById('neoDose').innerHTML = neoHTML;
+  }
+  recalc();
+
+  /* ===== クイック検索 / ジャンプ ===== */
+  var SIDX=[
+    {t:0,n:'LAST 局所麻酔薬中毒',k:['last','局所麻酔','リドカイン','ロピバカイン','ブピバカイン','脂肪乳剤','イントラリポス','痙攣','区域麻酔']},
+    {t:1,n:'悪性高熱症 MH',k:['mh','悪性高熱','ダントロレン','ダントリウム','高体温','筋硬直','etco2','スキサメトニウム']},
+    {t:2,n:'アナフィラキシー',k:['アナフィラキシー','アドレナリン','エピネフリン','ショック','トリプターゼ','蕁麻疹','膠質']},
+    {t:3,n:'CICO / eFONA',k:['cico','efona','輪状甲状','気道','挿管','das','メス','ブジー','気管切開']},
+    {t:4,n:'大量出血 / MTP',k:['出血','mtp','輸血','トラネキサム','txa','フィブリノゲン','カルシウム','rotem','111']},
+    {t:5,n:'高カリウム血症',k:['高k','高カリウム','カリウム','インスリン','グルコン酸','塩化ca','透析','重炭酸']},
+    {t:6,n:'徐脈 / 心停止 ACLS',k:['心停止','徐脈','acls','pals','アトロピン','アミオダロン','除細動','cpr','蘇生','vf','pea','4h4t']},
+    {t:7,n:'気管支痙攣 / 喘息',k:['気管支','喘息','喘鳴','サルブタモール','マグネシウム','ケタミン','アミノフィリン','ステロイド']},
+    {t:8,n:'新生児蘇生 NCPR',k:['新生児','蘇生','ncpr','nrp','分娩','出生','ppv','臍帯','早産','spo2','3:1','低体温']}
+  ];
+  var ACCENTS=['--teal','--amber','--rose','--violet','--red','--sky','--orange','--green','--pink'];
+  function doSearch(){
+    var qv=(document.getElementById('q').value||'').trim().toLowerCase();
+    var box=document.getElementById('sugg');
+    var list = qv? SIDX.filter(function(s){return s.n.toLowerCase().indexOf(qv)>=0 || s.k.some(function(k){return k.indexOf(qv)>=0;});}) : SIDX;
+    if(!list.length){ box.innerHTML='<button type="button" disabled style="color:var(--dim)">該当なし</button>'; box.classList.add('open'); return; }
+    box.innerHTML = list.map(function(s){
+      var hitk = qv? s.k.filter(function(k){return k.indexOf(qv)>=0;}).slice(0,2).join(' / ') : '';
+      return '<button type="button" onmousedown="event.preventDefault()" onclick="jumpTo('+s.t+')"><span class="sdot" style="background:var('+ACCENTS[s.t]+')"></span><span>'+s.n+(hitk?' <span class="skw">'+hitk+'</span>':'')+'</span><span class="stab">タブ'+(s.t+1)+'</span></button>';
+    }).join('');
+    box.classList.add('open');
+  }
+  function searchKey(e){
+    var box=document.getElementById('sugg');
+    if(e.key==='Enter'){ var b=box.querySelector('button:not([disabled])'); if(b){b.click();} e.preventDefault(); }
+    else if(e.key==='Escape'){ box.classList.remove('open'); document.getElementById('q').blur(); }
+  }
+  function jumpTo(i){
+    var tabs=document.querySelectorAll('.tab');
+    show(i, tabs[i]);
+    try{ tabs[i].scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'}); }catch(e){}
+    var box=document.getElementById('sugg'); box.classList.remove('open');
+    var q=document.getElementById('q'); q.value=''; q.blur();
+    var card=document.getElementById('p'+i).querySelector('.card');
+    if(card){ card.classList.add('flash-card'); setTimeout(function(){card.classList.remove('flash-card');},1600); }
+  }
+  document.addEventListener('click',function(e){
+    var s=document.getElementById('q'), box=document.getElementById('sugg');
+    if(e.target!==s && !box.contains(e.target)) box.classList.remove('open');
+  });
+
+  /* ===== 反復投与タイマー ===== */
+  var TPRESETS=[
+    {label:'アドレナリン 3分',sec:180},
+    {label:'リズム/脈確認 2分',sec:120},
+    {label:'ダントロレン 10分',sec:600},
+    {label:'IM/再評価 5分',sec:300},
+    {label:'1分',sec:60}
+  ];
+  var timers=[], tid=0, ticker=null, audioCtx=null;
+  function toggleTimers(){ document.getElementById('tpanel').classList.toggle('open'); }
+  function renderChips(){
+    document.getElementById('tchips').innerHTML = TPRESETS.map(function(p,i){return '<button type="button" onclick="addTimer('+i+')">'+p.label+'</button>';}).join('');
+    renderTimers();
+  }
+  function addTimer(i){
+    var p=TPRESETS[i];
+    timers.push({id:++tid,name:p.label,total:p.sec,left:p.sec,due:false});
+    if(!ticker) ticker=setInterval(tick,1000);
+    renderTimers();
+  }
+  function stopTimer(id){ timers=timers.filter(function(t){return t.id!==id;}); renderTimers(); }
+  function restartTimer(id){ timers.forEach(function(t){ if(t.id===id){ t.left=t.total; t.due=false; } }); if(!ticker) ticker=setInterval(tick,1000); renderTimers(); }
+  function tick(){
+    timers.forEach(function(t){ if(t.left>0){ t.left--; if(t.left===0){ t.due=true; beep(); } } });
+    renderTimers();
+  }
+  function fmtT(s){var m=Math.floor(s/60),x=s%60;return m+':' + (x<10?'0':'')+x;}
+  function renderTimers(){
+    var list=document.getElementById('tlist');
+    if(!timers.length){ list.innerHTML='<p class="tempty">プリセットを押すと開始。0で通知音＋点滅し、↻で再カウント。複数同時に走らせられます。</p>'; }
+    else {
+      list.innerHTML = timers.map(function(t){
+        return '<div class="trow'+(t.due?' due':'')+'"><span class="tname">'+t.name+(t.due?' <b style="color:var(--red)">時間です</b>':'')+'</span><span class="tleft">'+(t.due?'00:00':fmtT(t.left))+'</span>'+
+          (t.due?'<button class="x" title="再カウント" onclick="restartTimer('+t.id+')">↻</button>':'')+
+          '<button class="x" title="停止" onclick="stopTimer('+t.id+')">✕</button></div>';
+      }).join('');
+    }
+    var b=document.getElementById('tbadge');
+    var dueN=timers.filter(function(t){return t.due;}).length;
+    if(timers.length){ b.style.display=''; b.textContent=dueN?('!'+dueN):String(timers.length); b.style.background=dueN?'var(--red)':'var(--dim)'; }
+    else { b.style.display='none'; if(ticker){clearInterval(ticker);ticker=null;} }
+  }
+  function beep(){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      [0,0.25,0.5].forEach(function(d){
+        var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type='square'; o.frequency.value=880; o.connect(g); g.connect(audioCtx.destination);
+        var t0=audioCtx.currentTime+d;
+        g.gain.setValueAtTime(0.001,t0); g.gain.exponentialRampToValueAtTime(0.3,t0+0.02); g.gain.exponentialRampToValueAtTime(0.001,t0+0.18);
+        o.start(t0); o.stop(t0+0.2);
+      });
+    }catch(e){}
+    if(navigator.vibrate) try{navigator.vibrate([200,100,200]);}catch(e){}
+  }
+
+  /* ===== 印刷 / PDF（全タブ・文献を展開） ===== */
+  function printAll(){
+    var opened=[];
+    document.querySelectorAll('details.refbox').forEach(function(d){ if(!d.open){ d.open=true; opened.push(d);} });
+    window.onafterprint=function(){ opened.forEach(function(d){d.open=false;}); window.onafterprint=null; };
+    setTimeout(function(){ window.print(); }, 80);
+  }
+
+  /* ===== PWA: manifest + service worker =====
+     ホスティング版: 静的 manifest.json + sw.js でオフラインPWA。
+     単体ファイル(file://, AirDrop)版: 静的manifestは404なので除去しblobで内蔵。 */
+  (function(){
+    try{
+      if(location.protocol==='file:'){
+        var st=document.querySelector('link[rel="manifest"]'); if(st) st.remove();
+        var icon="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='108' fill='%230c111b'/%3E%3Cpath d='M256 104v304M104 256h304' stroke='%232dd4bf' stroke-width='56' stroke-linecap='round'/%3E%3C/svg%3E";
+        var man={name:'麻酔危機管理エイド',short_name:'危機管理',start_url:'.',display:'standalone',background_color:'#0c111b',theme_color:'#0c111b',icons:[{src:icon,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}]};
+        var blob=new Blob([JSON.stringify(man)],{type:'application/manifest+json'});
+        var l=document.createElement('link'); l.rel='manifest'; l.href=URL.createObjectURL(blob); document.head.appendChild(l);
+      } else if('serviceWorker' in navigator){
+        navigator.serviceWorker.register('sw.js').catch(function(){});
+      }
+    }catch(e){}
+  })();
+  var deferredPrompt=null;
+  window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); deferredPrompt=e; document.getElementById('installBtn').style.display=''; });
+  function installPWA(){
+    if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; document.getElementById('installBtn').style.display='none'; }
+    else { alert('iPhone/iPad（Safari）：共有ボタン → 「ホーム画面に追加」\nAndroid（Chrome）：メニュー → 「アプリをインストール」'); }
+  }
+
+  renderChips();
+</script>
+</body>
+</html>
