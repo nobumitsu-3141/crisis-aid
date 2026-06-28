@@ -149,6 +149,10 @@
   .tempty{font-size:12px;color:var(--dim);line-height:1.5}
 
   .toolbtn{background:var(--elev);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:13px;padding:9px 13px;cursor:pointer;font-family:var(--ui)}
+  .toolbtn.upd{background:var(--teal);color:#062b27;border-color:transparent;font-weight:700}
+  .verlab{align-self:center;font-size:11.5px;color:var(--dim);font-family:var(--mono)}
+  .toast{position:fixed;left:50%;bottom:86px;transform:translate(-50%,8px);background:var(--elev);border:1px solid var(--line);color:var(--txt);font-size:13px;padding:10px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:80;opacity:0;transition:opacity .25s,transform .25s;max-width:90vw;text-align:center;pointer-events:none}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
   .card.flash-card{animation:cardflash 1.6s ease}
   @keyframes cardflash{0%{box-shadow:0 0 0 2px var(--ac)}100%{box-shadow:0 0 0 0 transparent}}
 
@@ -613,9 +617,11 @@
   </section>
 
   <footer>
-    <div class="toolrow" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <div class="toolrow" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
       <button class="toolbtn" onclick="printAll()">🖨 全タブを印刷 / PDF</button>
       <button class="toolbtn" id="installBtn" style="display:none" onclick="installPWA()">⬇︎ ホーム画面に追加</button>
+      <button class="toolbtn" id="updateBtn" onclick="forceUpdate()">🔄 最新に更新</button>
+      <span class="verlab" id="verLabel"></span>
     </div>
     <div class="disc">
       <b>注意：</b>本ツールは公表ガイドラインに基づく意思決定支援（cognitive aid）であり、臨床判断・最新の各ガイドライン・施設プロトコル・添付文書での確認に代わるものではありません。投与量・製剤規格は使用前に必ず照合してください。<b>緊急時はまず応援要請を。</b>
@@ -963,7 +969,17 @@
         var blob=new Blob([JSON.stringify(man)],{type:'application/manifest+json'});
         var l=document.createElement('link'); l.rel='manifest'; l.href=URL.createObjectURL(blob); document.head.appendChild(l);
       } else if('serviceWorker' in navigator){
-        navigator.serviceWorker.register('sw.js').catch(function(){});
+        var hadController = !!navigator.serviceWorker.controller;
+        var refreshing=false;
+        navigator.serviceWorker.addEventListener('controllerchange', function(){
+          if(refreshing) return; refreshing=true;
+          if(hadController) location.reload();   // 新SW有効化時に自動リロード（初回installでは無し）
+        });
+        navigator.serviceWorker.register('sw.js').then(function(reg){
+          reg.update().catch(function(){});
+          document.addEventListener('visibilitychange', function(){ if(!document.hidden) reg.update().catch(function(){}); });
+          window.addEventListener('focus', function(){ reg.update().catch(function(){}); });
+        }).catch(function(){});
       }
     }catch(e){}
   })();
@@ -973,6 +989,27 @@
     if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; document.getElementById('installBtn').style.display='none'; }
     else { alert('iPhone/iPad（Safari）：共有ボタン → 「ホーム画面に追加」\nAndroid（Chrome）：メニュー → 「アプリをインストール」'); }
   }
+
+  /* ===== バージョン表示 & 手動更新（escape hatch） ===== */
+  var APP_VERSION='1.0.0', APP_DATE='2026-06-28';
+  function toast(msg){
+    var t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t);
+    requestAnimationFrame(function(){t.classList.add('show');});
+    setTimeout(function(){t.classList.remove('show'); setTimeout(function(){t.remove();},300);},2400);
+  }
+  async function forceUpdate(){
+    toast('最新に更新しています…');
+    try{
+      if('serviceWorker' in navigator){ var regs=await navigator.serviceWorker.getRegistrations(); for(var i=0;i<regs.length;i++){ try{await regs[i].unregister();}catch(e){} } }
+      if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){return caches.delete(k);})); }
+    }catch(e){}
+    setTimeout(function(){ location.reload(); }, 350);
+  }
+  (function(){
+    var v=document.getElementById('verLabel');
+    if(v) v.textContent='v'+APP_VERSION+' ・ '+APP_DATE+(location.protocol==='file:'?'（ファイル版）':'');
+    if(location.protocol==='file:'){ var ub=document.getElementById('updateBtn'); if(ub) ub.style.display='none'; }
+  })();
 
   renderChips();
 </script>
